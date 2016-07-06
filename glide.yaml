@@ -1,0 +1,6 @@
+package: github.com/pivotalservices/diego-blame
+import:
+- package: github.com/cloudfoundry/cli
+  subpackages:
+  - plugin
+- package: github.com/olekukonko/tablewriter

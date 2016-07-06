@@ -1,0 +1,21 @@
+hash: 837bc64cbfe55fe348324ac5490198e378bce45f6a23208fe90b61dbddadb925
+updated: 2016-07-06T13:38:12.659115559-04:00
+imports:
+- name: github.com/cloudfoundry/cli
+  version: 9f5d7bbd1eb57ba9eba83d175de6b6523c6f8435
+  subpackages:
+  - plugin
+  - plugin/models
+- name: github.com/krujos/cfcurl
+  version: 320854091a119f220102ba356e507c361562b221
+- name: github.com/olekukonko/tablewriter
+  version: daf2955e742cf123959884fdff4685aa79b63135
+- name: github.com/op/go-logging
+  version: 970db520ece77730c7e4724c61121037378659d9
+- name: github.com/pivotalservices/diego-blame
+  version: 9e9351ec10df64c0f852e2202d094311f06c1235
+  subpackages:
+  - blameplugin
+- name: github.com/xchapter7x/lo
+  version: aa2602d0e8e8647f0ce7b53109b37040941915aa
+devImports: []
