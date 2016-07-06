@@ -1,0 +1,57 @@
+{
+   "total_results": 1705,
+   "total_pages": 35,
+   "prev_url": null,
+   "next_url": null,
+   "resources": [
+      {
+         "metadata": {
+            "guid": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "url": "/v2/apps/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "created_at": "2015-05-29T02:01:46Z",
+            "updated_at": "2016-04-08T17:22:56Z"
+         },
+         "entity": {
+            "name": "cool-server",
+            "production": false,
+            "space_guid": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "stack_guid": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "buildpack": null,
+            "detected_buildpack": null,
+            "environment_json": {
+            },
+            "memory": 100,
+            "instances": 2,
+            "disk_quota": 1024,
+            "state": "STOPPED",
+            "version": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "command": null,
+            "console": false,
+            "debug": null,
+            "staging_task_id": null,
+            "package_state": "PENDING",
+            "health_check_type": "port",
+            "health_check_timeout": null,
+            "staging_failed_reason": null,
+            "staging_failed_description": null,
+            "diego": true,
+            "docker_image": null,
+            "package_updated_at": null,
+            "detected_start_command": "",
+            "enable_ssh": false,
+            "docker_credentials_json": {
+               "redacted_message": "[PRIVATE DATA HIDDEN]"
+            },
+            "ports": [
+               8080
+            ],
+            "space_url": "/v2/spaces/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "stack_url": "/v2/stacks/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+            "routes_url": "/v2/apps/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/routes",
+            "events_url": "/v2/apps/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/events",
+            "service_bindings_url": "/v2/apps/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/service_bindings",
+            "route_mappings_url": "/v2/apps/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/route_mappings"
+         }
+      }
+   ]
+}

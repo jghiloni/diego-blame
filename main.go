@@ -1,6 +1,8 @@
 package main
 
 import (
+	"os"
+
 	"github.com/cloudfoundry/cli/plugin"
 
 	"github.com/pivotalservices/diego-blame/blameplugin"
@@ -11,6 +13,9 @@ var (
 )
 
 func main() {
-	diegoBlame := &blameplugin.DiegoBlame{Version: Version}
+	diegoBlame := &blameplugin.DiegoBlame{
+		Version: Version,
+		Writer:  os.Stdout,
+	}
 	plugin.Start(diegoBlame)
 }

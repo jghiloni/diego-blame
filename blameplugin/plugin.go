@@ -3,7 +3,7 @@ package blameplugin
 import (
 	"encoding/json"
 	"fmt"
-	"os"
+	"io"
 	"strconv"
 	"strings"
 	"time"
@@ -18,6 +18,7 @@ const name = "diego-blame"
 
 type DiegoBlame struct {
 	Version string
+	Writer  io.Writer
 }
 
 func (c *DiegoBlame) Run(cli plugin.CliConnection, args []string) {
@@ -32,17 +33,17 @@ func (c *DiegoBlame) Run(cli plugin.CliConnection, args []string) {
 		lo.G.Panic("invalid argument set: ", args)
 	}
 
-	guidArray := callAppsAPI("/v2/apps", cli)
+	guidArray := CallAppsAPI("/v2/apps", cli)
 
 	for _, guid := range guidArray {
-		appStatusArray = append(appStatusArray, callStatsAPI(guid, cli, hostSelector)...)
+		appStatusArray = append(appStatusArray, CallStatsAPI(guid, cli, hostSelector)...)
 	}
 
-	prettyColumnPrint(appStatusArray)
+	prettyColumnPrint(appStatusArray, c.Writer)
 }
 
-func prettyColumnPrint(appStatusArray []AppStat) {
-	table := tablewriter.NewWriter(os.Stdout)
+func prettyColumnPrint(appStatusArray []AppStat, writer io.Writer) {
+	table := tablewriter.NewWriter(writer)
 	table.SetHeader([]string{"AppName", "State", "Host:Port", "Disk-Usage", "Disk-Quota", "Mem-Usage", "Mem-Quota", "CPU-Usage", "Uptime", "URIs"})
 
 	for _, status := range appStatusArray {
@@ -67,7 +68,7 @@ func getStatsURL(guid string) (statsURL string) {
 	return fmt.Sprintf("/v2/apps/%s/stats", guid)
 }
 
-func callStatsAPI(guid string, cli plugin.CliConnection, hostSelector string) (res []AppStat) {
+func CallStatsAPI(guid string, cli plugin.CliConnection, hostSelector string) (res []AppStat) {
 	endpoint := getStatsURL(guid)
 
 	if appStatsRaw, err := cfcurl.Curl(cli, endpoint); err == nil {
@@ -87,7 +88,7 @@ func callStatsAPI(guid string, cli plugin.CliConnection, hostSelector string) (r
 	return
 }
 
-func callAppsAPI(endpoint string, cli plugin.CliConnection) (res []string) {
+func CallAppsAPI(endpoint string, cli plugin.CliConnection) (res []string) {
 	lo.G.Debugf("calling: %s", endpoint)
 	var apps = new(Apps)
 	if appsRaw, err := cfcurl.Curl(cli, endpoint); err == nil {
@@ -103,7 +104,7 @@ func callAppsAPI(endpoint string, cli plugin.CliConnection) (res []string) {
 			}
 
 			if apps.NextURL != "" {
-				res = append(res, callAppsAPI(apps.NextURL, cli)...)
+				res = append(res, CallAppsAPI(apps.NextURL, cli)...)
 			}
 		} else {
 
