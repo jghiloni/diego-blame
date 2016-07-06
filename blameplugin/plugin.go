@@ -34,10 +34,7 @@ func (c *DiegoBlame) Run(cli plugin.CliConnection, args []string) {
 
 	guidArray := callAppsAPI("/v2/apps", cli)
 
-	for i, guid := range guidArray {
-		if i > 10 {
-			break
-		}
+	for _, guid := range guidArray {
 		appStatusArray = append(appStatusArray, callStatsAPI(guid, cli, hostSelector)...)
 	}
 
