@@ -3,6 +3,7 @@ package blameplugin_test
 import (
 	"bytes"
 	"io/ioutil"
+	"strings"
 
 	"github.com/cloudfoundry/cli/plugin/pluginfakes"
 	. "github.com/onsi/ginkgo"
@@ -32,6 +33,13 @@ var _ = Describe("DiegoBlame", func() {
 				b = new(bytes.Buffer)
 				plgn = &DiegoBlame{
 					Writer: b,
+				}
+			})
+			It("then it should print a table with the correct columns", func() {
+				cli := new(pluginfakes.FakeCliConnection)
+				plgn.Run(cli, []string{"hi", "there"})
+				for _, col := range []string{"app name/instance", "State", "Host:Port", "Org", "Space", "Disk-Usage", "Disk-Quota", "Mem-Usage", "Mem-Quota", "CPU-Usage", "Uptime", "URIs"} {
+					Ω(strings.ToLower(b.String())).Should(ContainSubstring(strings.ToLower(col)))
 				}
 			})
 			It("then it should print something", func() {

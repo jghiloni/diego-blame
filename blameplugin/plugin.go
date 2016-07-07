@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"strconv"
 	"strings"
 	"time"
@@ -39,24 +40,27 @@ func (c *DiegoBlame) Run(cli plugin.CliConnection, args []string) {
 		appStatusArray = append(appStatusArray, CallStatsAPI(guid, cli, hostSelector)...)
 	}
 
-	prettyColumnPrint(appStatusArray, c.Writer)
+	prettyColumnPrint(appStatusArray, cli, c.Writer)
 }
 
-func prettyColumnPrint(appStatusArray []AppStat, writer io.Writer) {
+func prettyColumnPrint(appStatusArray []AppStat, cli plugin.CliConnection, writer io.Writer) {
 	table := tablewriter.NewWriter(writer)
-	table.SetHeader([]string{"AppName", "State", "Host:Port", "Disk-Usage", "Disk-Quota", "Mem-Usage", "Mem-Quota", "CPU-Usage", "Uptime", "URIs"})
+	table.SetHeader([]string{"App Name/Instance", "State", "Host:Port", "Org", "Space", "Disk-Usage", "Disk-Quota", "Mem-Usage", "Mem-Quota", "CPU-Usage", "Uptime", "URIs"})
 
 	for _, status := range appStatusArray {
+		location := GetLocation(status.AppGUID, cli)
 		row := []string{
-			status.Stats.Name,
+			fmt.Sprintf("%v/%v", status.Stats.Name, status.AppInstance),
 			status.State,
 			fmt.Sprintf("%v:%v", status.Stats.Host, status.Stats.Port),
-			fmt.Sprintf("%v", status.Stats.Usage.Disk),
-			fmt.Sprintf("%v", status.Stats.DiskQuota),
-			fmt.Sprintf("%v", status.Stats.Usage.Mem),
-			fmt.Sprintf("%v", status.Stats.MemQuota),
-			fmt.Sprintf("%v", status.Stats.Usage.CPU),
-			fmt.Sprintf("%v", status.Stats.Uptime),
+			location.Org,
+			location.Space,
+			formatBytes(status.Stats.Usage.Disk),
+			formatBytes(status.Stats.DiskQuota),
+			formatBytes(status.Stats.Usage.Mem),
+			formatBytes(status.Stats.MemQuota),
+			formatPercent(status.Stats.Usage.CPU),
+			formatTime(status.Stats.Uptime),
 			fmt.Sprintf("%v", status.Stats.URIs),
 		}
 		table.Append(row)
@@ -68,6 +72,61 @@ func getStatsURL(guid string) (statsURL string) {
 	return fmt.Sprintf("/v2/apps/%s/stats", guid)
 }
 
+func getAppUrl(guid string) (appUrl string) {
+	return fmt.Sprintf("/v2/apps/%s", guid)
+}
+
+func GetLocation(guid string, cli plugin.CliConnection) (loc AppLocation) {
+	endpoint := getAppUrl(guid)
+
+	if appRaw, err := cfcurl.Curl(cli, endpoint); err == nil {
+		appJson, _ := json.Marshal(appRaw)
+		var app = &AppResource{}
+		json.Unmarshal(appJson, app)
+
+		spaceName, orgUrl := getSpaceInfo(app.Entity.SpaceUrl, cli)
+		orgName := getOrgName(orgUrl, cli)
+
+		loc = AppLocation{
+			Org:   orgName,
+			Space: spaceName,
+		}
+	} else {
+		fmt.Println("err:", err)
+	}
+	return
+}
+
+func getSpaceInfo(spaceUrl string, cli plugin.CliConnection) (name string, orgUrl string) {
+	if spaceRaw, err := cfcurl.Curl(cli, spaceUrl); err == nil {
+		spaceJson, _ := json.Marshal(spaceRaw)
+
+		var space = &SpaceResource{}
+		json.Unmarshal(spaceJson, space)
+
+		name = space.Entity.Name
+		orgUrl = space.Entity.OrganizationUrl
+
+	} else {
+		fmt.Println("err:", err)
+	}
+	return
+}
+
+func getOrgName(orgUrl string, cli plugin.CliConnection) (name string) {
+	if orgRaw, err := cfcurl.Curl(cli, orgUrl); err == nil {
+		orgJson, _ := json.Marshal(orgRaw)
+
+		var org = &Resource{}
+		json.Unmarshal(orgJson, org)
+
+		name = org.Entity.Name
+	} else {
+		fmt.Println("err:", err)
+	}
+	return
+}
+
 func CallStatsAPI(guid string, cli plugin.CliConnection, hostSelector string) (res []AppStat) {
 	endpoint := getStatsURL(guid)
 
@@ -76,9 +135,11 @@ func CallStatsAPI(guid string, cli plugin.CliConnection, hostSelector string) (r
 		var appStats = make(map[string]AppStat)
 		json.Unmarshal(appsStatsJson, &appStats)
 
-		for _, appStatObj := range appStats {
+		for instanceIndex, appStatObj := range appStats {
 
 			if appStatObj.Stats.Host == hostSelector {
+				appStatObj.AppGUID = guid
+				appStatObj.AppInstance = instanceIndex
 				res = append(res, appStatObj)
 			}
 		}
@@ -116,9 +177,53 @@ func CallAppsAPI(endpoint string, cli plugin.CliConnection) (res []string) {
 	return
 }
 
+func formatBytes(numBytes float64) string {
+	suffixes := []string{"B", "KB", "MB", "GB", "TB"}
+
+	suffixIndex := math.Floor(math.Log(numBytes) / math.Log(1024))
+	divisor := math.Pow(1024, suffixIndex)
+
+	return fmt.Sprintf("%v %v", round(numBytes/divisor, 3), suffixes[int(suffixIndex)])
+}
+
+func round(num float64, decPlaces float64) float64 {
+	mult := math.Pow(10, decPlaces)
+
+	return math.Floor(num*mult) / mult
+}
+
+func formatPercent(absolute float64) string {
+	return fmt.Sprintf("%v%%", round(absolute*100, 2))
+}
+
+func formatTime(seconds float64) string {
+	days := int(seconds / 86400)
+	seconds = math.Mod(seconds, 86400)
+
+	hours := int(seconds / 3600)
+	seconds = math.Mod(seconds, 3600)
+
+	minutes := int(seconds / 60)
+	seconds = math.Mod(seconds, 60)
+
+	return fmt.Sprintf("%d:%02d:%02d:%02d", days, hours, minutes, int(seconds))
+}
+
+type AppRecord struct {
+	Location     AppLocation
+	AppInstances []AppStat
+}
+
+type AppLocation struct {
+	Org   string
+	Space string
+}
+
 type AppStat struct {
-	State string `json:"state"`
-	Stats Stats  `json:"stats"`
+	AppGUID     string
+	AppInstance string
+	State       string `json:"state"`
+	Stats       Stats  `json:"stats"`
 }
 type Stats struct {
 	Usage     Usage    `json:"usage"`
@@ -140,14 +245,39 @@ type Usage struct {
 }
 
 type Apps struct {
-	Total      float64    `json:"total_results"`
-	TotalPages float64    `json:"total_pages"`
-	NextURL    string     `json:"next_url"`
-	Resources  []Resource `json:"resources"`
+	Total      float64       `json:"total_results"`
+	TotalPages float64       `json:"total_pages"`
+	NextURL    string        `json:"next_url"`
+	Resources  []AppResource `json:"resources"`
 }
 
 type Resource struct {
 	Metadata Metadata `json:"metadata"`
+	Entity   Entity   `json:"entity"`
+}
+
+type AppResource struct {
+	Metadata Metadata  `json:"metadata"`
+	Entity   AppEntity `json:"entity"`
+}
+
+type SpaceResource struct {
+	Metadata Metadata    `json:"metadata"`
+	Entity   SpaceEntity `json:"entity"`
+}
+
+type Entity struct {
+	Name string `json:"name"`
+}
+
+type AppEntity struct {
+	Name     string `json:"name"`
+	SpaceUrl string `json:"space_url"`
+}
+
+type SpaceEntity struct {
+	Name            string `json:"name"`
+	OrganizationUrl string `json:"organization_url"`
 }
 
 type Metadata struct {
